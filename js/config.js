@@ -9,7 +9,7 @@ window.MOTORUN_CONFIG = {
   /* --- Google Analytics 4 (gtag.js) ---
    * Wklej swój Measurement ID, np. "G-ABCD123456".
    * Zostaw placeholder, jeśli jeszcze nie masz – analytics po prostu się nie włączy. */
-  GA_MEASUREMENT_ID: "G-XXXXXXXXXX",
+  GA_MEASUREMENT_ID: "G-MS5ESGRE72",
 
   /* --- Microsoft Clarity ---
    * Wklej swój Project ID z kodu Clarity (ten ciąg z clarity.ms/tag/XXXXX).
