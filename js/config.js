@@ -41,10 +41,10 @@ window.MOTORUN_CONFIG = {
   ECONOMY: {
     requireCardVerification: false,
     startingTeopoints: 0,
-    teopointsPerMeter: 0.12,    // ile TEO za metr dystansu
-    teopointsPerFlip: 10,       // ile TEO za jedno salto
-    perfectLandingBonus: 6,     // bonus za idealne lądowanie
-    maxRewardPerRun: 1200       // ANTI-CHEAT: górny limit TEO za jeden przejazd
+    teopointsPerMeter: 0.04,    // ile TEO za metr dystansu
+    teopointsPerFlip: 4,        // ile TEO za jedno salto
+    perfectLandingBonus: 3,     // bonus za idealne lądowanie
+    maxRewardPerRun: 400        // ANTI-CHEAT: górny limit TEO za jeden przejazd
   }
 };
 

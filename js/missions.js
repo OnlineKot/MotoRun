@@ -20,11 +20,11 @@ window.Missions = (function () {
   }
 
   const POOL = [
-    { type: "distance", target: 2000, reward: 300, icon: "🛣️", desc: function (n) { return "Przejedź łącznie " + n + " m"; } },
-    { type: "flips",    target: 18,   reward: 280, icon: "🤸", desc: function (n) { return "Zrób " + n + " salt"; } },
-    { type: "coins",    target: 100,  reward: 220, icon: "🪙", desc: function (n) { return "Zbierz " + n + " z monet"; } },
-    { type: "runs",     target: 6,    reward: 180, icon: "🏍️", desc: function (n) { return "Rozegraj " + n + " przejazdów"; } },
-    { type: "score",    target: 4500, reward: 400, icon: "🎯", desc: function (n) { return "Zdobądź " + n + " pkt w jednym przejeździe"; } }
+    { type: "distance", target: 2000, reward: 60, icon: "🛣️", desc: function (n) { return "Przejedź łącznie " + n + " m"; } },
+    { type: "flips",    target: 18,   reward: 55, icon: "🤸", desc: function (n) { return "Zrób " + n + " salt"; } },
+    { type: "coins",    target: 100,  reward: 45, icon: "🪙", desc: function (n) { return "Zbierz " + n + " z monet"; } },
+    { type: "runs",     target: 6,    reward: 40, icon: "🏍️", desc: function (n) { return "Rozegraj " + n + " przejazdów"; } },
+    { type: "score",    target: 4500, reward: 80, icon: "🎯", desc: function (n) { return "Zdobądź " + n + " pkt w jednym przejeździe"; } }
   ];
 
   function today() { return new Date().toISOString().slice(0, 10); }

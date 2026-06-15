@@ -15,7 +15,7 @@ window.Collection = (function () {
     { id: "skull", emoji: "💀", name: "Czacha" },
     { id: "rocket",emoji: "🚀", name: "Rakieta" }
   ];
-  const SET_REWARD = 1500;
+  const SET_REWARD = 300;
 
   let state = load();
   function load() {

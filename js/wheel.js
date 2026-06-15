@@ -7,14 +7,14 @@ window.Wheel = (function () {
 
   // kolejność pól zgodna z grafiką koła (8 segmentów po 45°)
   const SEGMENTS = [
-    { kind: "teo", amount: 100,  label: "100",     color: "#00e5ff" },
-    { kind: "teo", amount: 300,  label: "300",     color: "#aaff00" },
-    { kind: "sticker",           label: "🏷️",      color: "#ff2d95" },
-    { kind: "teo", amount: 200,  label: "200",     color: "#ffd23f" },
-    { kind: "teo", amount: 1000, label: "JACKPOT", color: "#b14bff" },
-    { kind: "teo", amount: 150,  label: "150",     color: "#00e5ff" },
-    { kind: "sticker",           label: "🏷️",      color: "#ff5722" },
-    { kind: "teo", amount: 500,  label: "500",     color: "#aaff00" }
+    { kind: "teo", amount: 20,  label: "20",      color: "#3a86c8" },
+    { kind: "teo", amount: 60,  label: "60",      color: "#6a994e" },
+    { kind: "sticker",          label: "🏷️",      color: "#bc4749" },
+    { kind: "teo", amount: 40,  label: "40",      color: "#d4a017" },
+    { kind: "teo", amount: 200, label: "JACKPOT", color: "#7d4ea8" },
+    { kind: "teo", amount: 30,  label: "30",      color: "#3a86c8" },
+    { kind: "sticker",          label: "🏷️",      color: "#c1561f" },
+    { kind: "teo", amount: 100, label: "100",     color: "#6a994e" }
   ];
   // wagi losowania (JACKPOT i naklejki rzadsze)
   const WEIGHTS = [22, 16, 12, 18, 4, 16, 8, 6];

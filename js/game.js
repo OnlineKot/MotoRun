@@ -18,11 +18,11 @@ window.Game = (function () {
   const GROUND_BASE = 0.72;      // bazowa wysokość terenu (ułamek H)
   const GRAVITY = 1900;
   // model gazu: trzymasz = jedzie, puszczasz = zwalnia (spokojniejsze tempo)
-  const ACCEL = 540;            // przyspieszenie pod gazem (px/s^2)
+  const ACCEL = 650;            // przyspieszenie pod gazem (px/s^2)
   const FRICTION = 520;         // hamowanie/opór po puszczeniu na ziemi (px/s^2)
-  const AIR_DRAG = 26;          // lekki opór w powietrzu
+  const AIR_DRAG = 22;          // lekki opór w powietrzu
   const MIN_SPEED = 18;         // motor lekko "dyszy" na biegu jałowym
-  const MAX_SPEED = 410;        // prędkość maksymalna
+  const MAX_SPEED = 470;        // prędkość maksymalna
   const SLOPE_PULL = 1000;      // jak mocno zjazd rozpędza / podjazd hamuje
   // fizyka obrotu w locie (prawdziwa technika skoku)
   const ROT_HOLD = 12;          // moment od gazu: lean back / backflip (rad/s^2)
@@ -88,13 +88,13 @@ window.Game = (function () {
   function ensureWorld() {
     // generuj świat z wyprzedzeniem przed kamerą
     while (worldEnd < camX + W * 2.5) {
-      const difficulty = Math.min(1, camX / 12000);
-      const groundLen = 420 + rng() * 520;
-      const amp = 14 + rng() * (26 + difficulty * 30);
+      const difficulty = Math.min(1, camX / 14000);
+      const groundLen = 480 + rng() * 540;
+      const amp = 16 + rng() * (30 + difficulty * 34);
       pushGround(groundLen, amp);
-      // przerwa pojawia się coraz częściej i jest szersza wraz z trudnością
-      if (rng() < 0.45 + difficulty * 0.25) {
-        const gap = 120 + rng() * (90 + difficulty * 230);
+      // przerwa: węższa, by dało się ją przeskoczyć z rozpędu
+      if (rng() < 0.4 + difficulty * 0.25) {
+        const gap = 90 + rng() * (50 + difficulty * 90);
         pushGap(gap);
       }
     }
@@ -239,19 +239,30 @@ window.Game = (function () {
 
     if (bike.onGround) {
       if (gy === null) {
-        // wjechaliśmy w przepaść -> lot, wyrzut zgodny z nachyleniem terenu
+        // ---- WYBICIE NAD PRZEPAŚCIĄ (skok do góry) ----
         bike.onGround = false;
         const slope = groundSlope(bike.x - 4);
-        bike.vy = bike.vx * slope; // tangens nachylenia * prędkość
-        bike.airRotation = 0;
+        // pęd zamienia się w wybicie w górę – im szybciej, tym dalej doskoczysz
+        bike.vy = -Math.min(bike.vx, 540) + bike.vx * slope;
+        bike.angVel = 0; bike.airRotation = 0;
         bike.angle = Math.atan(slope);
       } else {
-        bike.y = gy;
-        bike.angle = Math.atan(groundSlope(bike.x));
-        bike.vy = 0;
-        if (bike.pressing) {
-          // trzymanie na ziemi = lekki "wheelie" wizualnie
-          bike.angle -= 0.18;
+        // jazda po terenie
+        const slopeHere = groundSlope(bike.x);
+        const slopeAhead = groundSlope(bike.x + Math.max(6, bike.vx * dt));
+        // ile przyspieszenia w dół trzeba, by utrzymać koła na grzbiecie
+        const needed = (slopeAhead - slopeHere) * bike.vx / dt;
+        if (needed > GRAVITY * 0.85 && bike.vx > 150) {
+          // ---- SKOK Z GRZBIETU: teren ucieka spod kół, lecisz ----
+          bike.onGround = false;
+          bike.vy = slopeHere * bike.vx - bike.vx * 0.18;
+          bike.angVel = 0; bike.airRotation = 0;
+          bike.angle = Math.atan(slopeHere);
+        } else {
+          bike.y = gy;
+          bike.angle = Math.atan(slopeHere);
+          bike.vy = 0;
+          if (bike.pressing) bike.angle -= 0.16; // lekki wheelie
         }
       }
     } else {
@@ -280,7 +291,7 @@ window.Game = (function () {
     // monety
     coins.forEach(function (c) {
       if (!c.got && Math.abs(c.x - bike.x) < 34 && Math.abs(c.y - bike.y) < 46) {
-        c.got = true; stats.coins += 2;
+        c.got = true; stats.coins += 1;
         burst(c.x, c.y, "#ffd23f", 10);
         window.Analytics && Analytics.track("coin_pickup", {});
       }

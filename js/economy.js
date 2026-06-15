@@ -81,7 +81,7 @@ window.Economy = (function () {
     if (profile.lastPlayDay === yesterday) profile.streakDays += 1;
     else profile.streakDays = 1;
     profile.lastPlayDay = today;
-    const reward = profile.streakDays * 50;
+    const reward = profile.streakDays * 10;
     creditTeo(reward, "MotoRun: seria " + profile.streakDays + " dni");
     persist();
     window.Analytics.track("daily_streak", { day: profile.streakDays, reward: reward });
