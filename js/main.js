@@ -32,7 +32,7 @@
   /* --- HUD --- */
   function updateHud(d) {
     $("hud-score").textContent = d.score;
-    $("hud-dist").textContent = d.distance + " m";
+    $("hud-dist").textContent = d.distance + " m · " + d.speed + " km/h";
     $("hud-combo").textContent = d.combo > 0 ? ("COMBO x" + (1 + d.combo)) : "";
     $("hud-teo").textContent = "🪙 " + d.teopoints;
   }

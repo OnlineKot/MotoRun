@@ -16,9 +16,15 @@ window.Game = (function () {
 
   /* --- świat / kamera --- */
   const GROUND_BASE = 0.72;      // bazowa wysokość terenu (ułamek H)
-  const SPEED = 360;             // stała prędkość pozioma (px/s w świecie)
   const GRAVITY = 2100;
-  const FLIP_SPEED = 5.2;        // prędkość obrotu przy trzymaniu (rad/s)
+  const FLIP_SPEED = 5.6;        // prędkość obrotu przy trzymaniu w locie (rad/s)
+  // model gazu: trzymasz = jedzie, puszczasz = zwalnia
+  const ACCEL = 950;            // przyspieszenie pod gazem (px/s^2)
+  const FRICTION = 760;         // hamowanie/opór po puszczeniu na ziemi (px/s^2)
+  const AIR_DRAG = 40;          // lekki opór w powietrzu
+  const MIN_SPEED = 28;         // motor lekko "dyszy" na biegu jałowym
+  const MAX_SPEED = 640;        // prędkość maksymalna
+  const SLOPE_PULL = 1500;      // jak mocno zjazd rozpędza / podjazd hamuje
   let camX = 0;
 
   /* --- gracz (motocykl) --- */
@@ -26,6 +32,7 @@ window.Game = (function () {
   function resetBike() {
     bike = {
       x: 140, y: 0, vy: 0,
+      vx: MIN_SPEED,      // prędkość pozioma (sterowana gazem)
       angle: 0,           // kąt nadwozia (rad)
       onGround: true,
       airRotation: 0,     // suma obrotu w locie (do liczenia salt)
@@ -123,10 +130,64 @@ window.Game = (function () {
       combo: 0, bestCombo: 0, multiplier: 1 };
   }
 
+  /* ============================ DŹWIĘK SILNIKA ============================ */
+  let actx = null, osc = null, oscGain = null, lp = null, sub = null, subGain = null;
+  function ensureAudio() {
+    if (actx) { if (actx.state === "suspended") actx.resume(); return; }
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      actx = new AC();
+      // główny ton silnika (piła przez filtr dolnoprzepustowy)
+      osc = actx.createOscillator(); osc.type = "sawtooth";
+      lp = actx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 900;
+      oscGain = actx.createGain(); oscGain.gain.value = 0;
+      osc.connect(lp); lp.connect(oscGain); oscGain.connect(actx.destination);
+      // niski "dudniący" pod-ton
+      sub = actx.createOscillator(); sub.type = "square";
+      subGain = actx.createGain(); subGain.gain.value = 0;
+      sub.connect(subGain); subGain.connect(actx.destination);
+      osc.start(); sub.start();
+    } catch (e) { actx = null; }
+  }
+  function setEngine(vx, pressing, onGround) {
+    if (!actx || !osc) return;
+    const t = vx / MAX_SPEED;                       // 0..1
+    const freq = 60 + t * 230;                       // obroty silnika
+    const now = actx.currentTime;
+    osc.frequency.setTargetAtTime(freq, now, 0.05);
+    sub.frequency.setTargetAtTime(freq * 0.5, now, 0.05);
+    lp.frequency.setTargetAtTime(500 + t * 1800, now, 0.05);
+    const load = pressing && onGround ? 1 : 0.35;    // pod gazem głośniej
+    oscGain.gain.setTargetAtTime((0.015 + t * 0.07) * load, now, 0.06);
+    subGain.gain.setTargetAtTime((0.02 + t * 0.05) * load, now, 0.06);
+  }
+  function engineOff() {
+    if (!actx || !oscGain) return;
+    const now = actx.currentTime;
+    oscGain.gain.setTargetAtTime(0, now, 0.1);
+    subGain.gain.setTargetAtTime(0, now, 0.1);
+  }
+  function crashSound() {
+    if (!actx) return;
+    try {
+      const n = actx.createBufferSource();
+      const buf = actx.createBuffer(1, actx.sampleRate * 0.35, actx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+      n.buffer = buf;
+      const g = actx.createGain(); g.gain.value = 0.25;
+      const f = actx.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 1200;
+      n.connect(f); f.connect(g); g.connect(actx.destination);
+      n.start();
+    } catch (e) {}
+  }
+
   /* ============================ STEROWANIE ============================ */
   function press() {
     if (state === "menu") return;
-    if (state === "crashed") return;
+    ensureAudio();
+    if (state !== "running") return;
     bike.pressing = true;
   }
   function release() { if (bike) bike.pressing = false; }
@@ -143,11 +204,27 @@ window.Game = (function () {
 
   function update(dt) {
     if (invuln > 0) invuln -= dt;
-    // ruch poziomy świata (stała prędkość)
-    bike.x += SPEED * dt;
-    stats.distance += SPEED * dt / 32; // ~metry
+
+    // ---- GAZ: trzymasz = przyspiesza, puszczasz = zwalnia ----
+    if (bike.onGround) {
+      if (bike.pressing) {
+        bike.vx += ACCEL * dt;
+      } else {
+        bike.vx -= FRICTION * dt;
+      }
+      // grawitacja wzdłuż stoku: zjazd rozpędza, podjazd hamuje
+      bike.vx += groundSlope(bike.x) * SLOPE_PULL * dt;
+    } else {
+      bike.vx -= AIR_DRAG * dt; // lekki opór powietrza
+    }
+    bike.vx = Math.max(bike.pressing ? MIN_SPEED : 0, Math.min(MAX_SPEED, bike.vx));
+
+    // ruch poziomy świata (prędkość zmienna)
+    bike.x += bike.vx * dt;
+    stats.distance += bike.vx * dt / 32; // ~metry
     camX = bike.x - 140;
-    bike.wheelSpin += SPEED * dt * 0.02;
+    bike.wheelSpin += bike.vx * dt * 0.02;
+    setEngine(bike.vx, bike.pressing, bike.onGround);
 
     ensureWorld();
     spawnCoins();
@@ -159,7 +236,7 @@ window.Game = (function () {
         // wjechaliśmy w przepaść -> lot, wyrzut zgodny z nachyleniem terenu
         bike.onGround = false;
         const slope = groundSlope(bike.x - 4);
-        bike.vy = SPEED * slope; // tangens nachylenia * prędkość
+        bike.vy = bike.vx * slope; // tangens nachylenia * prędkość
         bike.airRotation = 0;
         bike.angle = Math.atan(slope);
       } else {
@@ -262,6 +339,7 @@ window.Game = (function () {
     lastReason = reason;
     bike.pressing = false;
     burst(bike.x, bike.y, "#ff2d95", 30);
+    engineOff(); crashSound();
     window.Analytics && Analytics.track("crash", { reason: reason, distance: Math.floor(stats.distance) });
     const cost = reviveCost();
     onStateChange("revive", {
@@ -291,6 +369,7 @@ window.Game = (function () {
     bike.y = (gy !== null) ? gy : H * GROUND_BASE;
     bike.vy = 0; bike.angle = 0; bike.onGround = true;
     bike.airRotation = 0; bike.pressing = false;
+    bike.vx = 300; // ruszasz z rozpędem po wskrzeszeniu
     invuln = 1.4;
     burst(bike.x, bike.y, "#aaff00", 24);
     flashMsg("WSKRZESZENIE!");
@@ -302,6 +381,7 @@ window.Game = (function () {
   function gameOver() {
     if (state === "gameover") return;
     state = "gameover";
+    engineOff();
     const result = window.Economy ? Economy.finishRun(stats) : { earned: 0, breakdown: {} };
     onStateChange("gameover", { stats: stats, reason: lastReason, earned: result.earned, breakdown: result.breakdown });
   }
@@ -310,11 +390,42 @@ window.Game = (function () {
   function render() {
     ctx.clearRect(0, 0, W, H);
     drawBackground();
+    drawSpeedLines();
     drawGround();
     drawCoins();
     drawParticles();
     if (bike) drawBike();
+    drawHoldHint();
     drawFloatingMsg();
+  }
+
+  // pędzące linie prędkości – czuć szybkość
+  function drawSpeedLines() {
+    if (state !== "running" || !bike || bike.vx < 260) return;
+    const intensity = (bike.vx - 260) / (MAX_SPEED - 260);
+    ctx.save();
+    ctx.globalAlpha = 0.12 + intensity * 0.25;
+    ctx.strokeStyle = "#9fdcff"; ctx.lineWidth = 2;
+    for (let i = 0; i < 7; i++) {
+      const y = ((i * 137 + (performance.now() * (0.5 + intensity)) % H)) % H;
+      const len = 60 + intensity * 120;
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(len, y); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // podpowiedź: przytrzymaj, aby jechać (gdy stoisz/zwalniasz)
+  function drawHoldHint() {
+    if (state !== "running" || !bike) return;
+    if (bike.pressing || bike.vx > 90) return;
+    ctx.save();
+    ctx.globalAlpha = 0.6 + Math.sin(performance.now() / 250) * 0.3;
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 22px 'Segoe UI', sans-serif";
+    ctx.textAlign = "center";
+    ctx.shadowColor = "#00e5ff"; ctx.shadowBlur = 16;
+    ctx.fillText("PRZYTRZYMAJ, ABY JECHAĆ ▶", W / 2, H * 0.5);
+    ctx.restore();
   }
 
   function drawBackground() {
@@ -463,6 +574,7 @@ window.Game = (function () {
       distance: Math.floor(stats.distance),
       flips: stats.flips,
       combo: stats.combo,
+      speed: Math.round(bike.vx * 0.3),
       teopoints: window.Economy ? Economy.teopoints : 0
     });
   }
@@ -510,6 +622,6 @@ window.Game = (function () {
     revive: revive,
     gameOver: gameOver,
     reviveCost: reviveCost,
-    setMenu: function () { state = "menu"; onStateChange("menu", {}); }
+    setMenu: function () { state = "menu"; engineOff(); onStateChange("menu", {}); }
   };
 })();
