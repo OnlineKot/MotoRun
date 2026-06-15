@@ -406,6 +406,12 @@
     b.onclick = function () { showScreen(screenMenu); };
   });
 
+  // wyciszanie dźwięku
+  $("btn-mute").onclick = function () {
+    const m = window.Game.toggleMute();
+    $("btn-mute").textContent = m ? "🔇" : "🔊";
+  };
+
   // start na menu
   updateConnectUI();
   refreshBadges();

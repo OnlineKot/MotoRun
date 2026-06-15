@@ -16,15 +16,18 @@ window.Game = (function () {
 
   /* --- świat / kamera --- */
   const GROUND_BASE = 0.72;      // bazowa wysokość terenu (ułamek H)
-  const GRAVITY = 2100;
-  const FLIP_SPEED = 5.6;        // prędkość obrotu przy trzymaniu w locie (rad/s)
-  // model gazu: trzymasz = jedzie, puszczasz = zwalnia
-  const ACCEL = 950;            // przyspieszenie pod gazem (px/s^2)
-  const FRICTION = 760;         // hamowanie/opór po puszczeniu na ziemi (px/s^2)
-  const AIR_DRAG = 40;          // lekki opór w powietrzu
-  const MIN_SPEED = 28;         // motor lekko "dyszy" na biegu jałowym
-  const MAX_SPEED = 640;        // prędkość maksymalna
-  const SLOPE_PULL = 1500;      // jak mocno zjazd rozpędza / podjazd hamuje
+  const GRAVITY = 1900;
+  // model gazu: trzymasz = jedzie, puszczasz = zwalnia (spokojniejsze tempo)
+  const ACCEL = 540;            // przyspieszenie pod gazem (px/s^2)
+  const FRICTION = 520;         // hamowanie/opór po puszczeniu na ziemi (px/s^2)
+  const AIR_DRAG = 26;          // lekki opór w powietrzu
+  const MIN_SPEED = 18;         // motor lekko "dyszy" na biegu jałowym
+  const MAX_SPEED = 410;        // prędkość maksymalna
+  const SLOPE_PULL = 1000;      // jak mocno zjazd rozpędza / podjazd hamuje
+  // fizyka obrotu w locie (prawdziwa technika skoku)
+  const ROT_HOLD = 12;          // moment od gazu: lean back / backflip (rad/s^2)
+  const ROT_GRAV = 6.5;         // grawitacja opuszcza przód po puszczeniu (rad/s^2)
+  const ROT_MAX = 8.5;          // maks. prędkość kątowa (rad/s)
   let camX = 0;
 
   /* --- gracz (motocykl) --- */
@@ -34,6 +37,7 @@ window.Game = (function () {
       x: 140, y: 0, vy: 0,
       vx: MIN_SPEED,      // prędkość pozioma (sterowana gazem)
       angle: 0,           // kąt nadwozia (rad)
+      angVel: 0,          // prędkość kątowa w locie (rad/s)
       onGround: true,
       airRotation: 0,     // suma obrotu w locie (do liczenia salt)
       wheelSpin: 0,
@@ -132,6 +136,7 @@ window.Game = (function () {
 
   /* ============================ DŹWIĘK SILNIKA ============================ */
   let actx = null, osc = null, oscGain = null, lp = null, sub = null, subGain = null;
+  let muted = false;
   function ensureAudio() {
     if (actx) { if (actx.state === "suspended") actx.resume(); return; }
     try {
@@ -152,6 +157,7 @@ window.Game = (function () {
   }
   function setEngine(vx, pressing, onGround) {
     if (!actx || !osc) return;
+    if (muted) { engineOff(); return; }
     const t = vx / MAX_SPEED;                       // 0..1
     const freq = 60 + t * 230;                       // obroty silnika
     const now = actx.currentTime;
@@ -169,7 +175,7 @@ window.Game = (function () {
     subGain.gain.setTargetAtTime(0, now, 0.1);
   }
   function crashSound() {
-    if (!actx) return;
+    if (!actx || muted) return;
     try {
       const n = actx.createBufferSource();
       const buf = actx.createBuffer(1, actx.sampleRate * 0.35, actx.sampleRate);
@@ -249,14 +255,18 @@ window.Game = (function () {
         }
       }
     } else {
-      // w powietrzu
+      // w powietrzu – prawdziwa technika skoku:
+      // trzymasz = odchylasz motor do tyłu (salto), puszczasz = grawitacja
+      // opuszcza przód. Balansujesz prędkością kątową, by wylądować płasko.
       bike.vy += GRAVITY * dt;
       bike.y += bike.vy * dt;
-      if (bike.pressing) {
-        const d = -FLIP_SPEED * dt;   // backflip
-        bike.angle += d;
-        bike.airRotation += d;
-      }
+      const torque = bike.pressing ? -ROT_HOLD : ROT_GRAV;
+      bike.angVel += torque * dt;
+      if (bike.angVel > ROT_MAX) bike.angVel = ROT_MAX;
+      if (bike.angVel < -ROT_MAX) bike.angVel = -ROT_MAX;
+      const da = bike.angVel * dt;
+      bike.angle += da;
+      bike.airRotation += da;
       // lądowanie
       const landY = groundYAtRaw(bike.x);
       if (landY !== null && bike.y >= landY) {
@@ -270,7 +280,7 @@ window.Game = (function () {
     // monety
     coins.forEach(function (c) {
       if (!c.got && Math.abs(c.x - bike.x) < 34 && Math.abs(c.y - bike.y) < 46) {
-        c.got = true; stats.coins += 5;
+        c.got = true; stats.coins += 2;
         burst(c.x, c.y, "#ffd23f", 10);
         window.Analytics && Analytics.track("coin_pickup", {});
       }
@@ -310,6 +320,7 @@ window.Game = (function () {
     bike.vy = 0;
     bike.angle = groundAngle;
     bike.airRotation = 0;
+    bike.angVel = 0;
 
     if (flipsDone > 0) {
       stats.flips += flipsDone;
@@ -368,8 +379,8 @@ window.Game = (function () {
     const gy = groundYAtRaw(bike.x);
     bike.y = (gy !== null) ? gy : H * GROUND_BASE;
     bike.vy = 0; bike.angle = 0; bike.onGround = true;
-    bike.airRotation = 0; bike.pressing = false;
-    bike.vx = 300; // ruszasz z rozpędem po wskrzeszeniu
+    bike.airRotation = 0; bike.angVel = 0; bike.pressing = false;
+    bike.vx = 200; // ruszasz z rozpędem po wskrzeszeniu
     invuln = 1.4;
     burst(bike.x, bike.y, "#aaff00", 24);
     flashMsg("WSKRZESZENIE!");
@@ -390,7 +401,6 @@ window.Game = (function () {
   function render() {
     ctx.clearRect(0, 0, W, H);
     drawBackground();
-    drawSpeedLines();
     drawGround();
     drawCoins();
     drawParticles();
@@ -399,94 +409,89 @@ window.Game = (function () {
     drawFloatingMsg();
   }
 
-  // pędzące linie prędkości – czuć szybkość
-  function drawSpeedLines() {
-    if (state !== "running" || !bike || bike.vx < 260) return;
-    const intensity = (bike.vx - 260) / (MAX_SPEED - 260);
-    ctx.save();
-    ctx.globalAlpha = 0.12 + intensity * 0.25;
-    ctx.strokeStyle = "#9fdcff"; ctx.lineWidth = 2;
-    for (let i = 0; i < 7; i++) {
-      const y = ((i * 137 + (performance.now() * (0.5 + intensity)) % H)) % H;
-      const len = 60 + intensity * 120;
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(len, y); ctx.stroke();
-    }
-    ctx.restore();
-  }
-
   // podpowiedź: przytrzymaj, aby jechać (gdy stoisz/zwalniasz)
   function drawHoldHint() {
     if (state !== "running" || !bike) return;
-    if (bike.pressing || bike.vx > 90) return;
+    if (bike.pressing || bike.vx > 70) return;
     ctx.save();
-    ctx.globalAlpha = 0.6 + Math.sin(performance.now() / 250) * 0.3;
-    ctx.fillStyle = "#fff";
-    ctx.font = "bold 22px 'Segoe UI', sans-serif";
+    ctx.globalAlpha = 0.55 + Math.sin(performance.now() / 250) * 0.25;
     ctx.textAlign = "center";
-    ctx.shadowColor = "#00e5ff"; ctx.shadowBlur = 16;
+    ctx.font = "bold 22px 'Segoe UI', sans-serif";
+    ctx.lineWidth = 4; ctx.strokeStyle = "rgba(0,0,0,0.5)";
+    ctx.strokeText("PRZYTRZYMAJ, ABY JECHAĆ ▶", W / 2, H * 0.5);
+    ctx.fillStyle = "#fff";
     ctx.fillText("PRZYTRZYMAJ, ABY JECHAĆ ▶", W / 2, H * 0.5);
     ctx.restore();
   }
 
   function drawBackground() {
+    // niebo (dzień)
     const g = ctx.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, "#0a0a23");
-    g.addColorStop(0.6, "#160d33");
-    g.addColorStop(1, "#070712");
+    g.addColorStop(0, "#5ea7d8");
+    g.addColorStop(0.55, "#a7d2e8");
+    g.addColorStop(1, "#e7ecd8");
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-    // gwiazdy / siatka paralaksy
+
+    // słońce
     ctx.save();
-    ctx.globalAlpha = 0.5;
-    ctx.fillStyle = "#2a2a55";
-    for (let i = 0; i < 60; i++) {
-      const x = ((i * 211 - camX * 0.2) % W + W) % W;
-      const y = (i * 97) % (H * 0.6);
-      ctx.fillRect(x, y, 2, 2);
+    ctx.fillStyle = "rgba(255,247,214,0.95)";
+    ctx.beginPath(); ctx.arc(W * 0.8, H * 0.2, 42, 0, 6.28); ctx.fill();
+    ctx.restore();
+
+    // chmury (paralaksa)
+    ctx.save();
+    ctx.fillStyle = "rgba(255,255,255,0.85)";
+    for (let i = 0; i < 5; i++) {
+      const cx = ((i * 360 - camX * 0.08) % (W + 240) + (W + 240)) % (W + 240) - 120;
+      const cy = 50 + (i * 53) % 110;
+      cloud(cx, cy, 34 + (i % 3) * 10);
     }
     ctx.restore();
-    // dalekie góry
-    ctx.fillStyle = "#1a1240";
+
+    // dalekie wzgórza (2 warstwy paralaksy)
+    hillsLayer(0.25, H * 0.62, 46, "#8fb98a");
+    hillsLayer(0.45, H * 0.7, 34, "#6fa06a");
+  }
+  function cloud(x, y, r) {
     ctx.beginPath();
-    ctx.moveTo(0, H);
-    for (let x = 0; x <= W; x += 40) {
-      const wx = x + camX * 0.3;
-      ctx.lineTo(x, H * 0.55 + Math.sin(wx * 0.004) * 40 + Math.sin(wx * 0.011) * 18);
+    ctx.arc(x, y, r, 0, 6.28);
+    ctx.arc(x + r * 0.9, y + 6, r * 0.7, 0, 6.28);
+    ctx.arc(x - r * 0.9, y + 6, r * 0.6, 0, 6.28);
+    ctx.fill();
+  }
+  function hillsLayer(par, baseY, amp, color) {
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.moveTo(0, H);
+    for (let x = 0; x <= W; x += 30) {
+      const wx = x + camX * par;
+      ctx.lineTo(x, baseY + Math.sin(wx * 0.004) * amp + Math.sin(wx * 0.013) * amp * 0.4);
     }
     ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
   }
 
   function drawGround() {
-    const skin = window.Economy ? Economy.getSelectedSkin() : { color: "#00e5ff" };
-    ctx.lineWidth = 4;
-    ctx.strokeStyle = "#00e5ff";
-    ctx.shadowColor = "#00e5ff";
-    ctx.shadowBlur = 14;
     segments.forEach(function (s) {
       if (s.type === "gap") return;
+      // bryła ziemi (brąz)
+      ctx.beginPath();
+      ctx.moveTo(s.x0 - camX, H);
+      for (let wx = s.x0; wx <= s.x1; wx += 8) ctx.lineTo(wx - camX, hillHeight(wx, s));
+      ctx.lineTo(s.x1 - camX, H);
+      ctx.closePath();
+      ctx.fillStyle = "#7a5230"; ctx.fill();
+
+      // trawiasta czapa (zielony pas wzdłuż górnej linii)
       ctx.beginPath();
       let first = true;
       for (let wx = s.x0; wx <= s.x1; wx += 8) {
-        const sx = wx - camX;
-        if (sx < -20 || sx > W + 20) { first = true; continue; }
-        const y = hillHeight(wx, s);
-        if (first) { ctx.moveTo(sx, y); first = false; }
-        else ctx.lineTo(sx, y);
+        const sx = wx - camX, y = hillHeight(wx, s);
+        if (first) { ctx.moveTo(sx, y); first = false; } else ctx.lineTo(sx, y);
       }
-      ctx.stroke();
-      // wypełnienie pod linią
-      ctx.shadowBlur = 0;
-      ctx.beginPath();
-      ctx.moveTo(s.x0 - camX, H);
-      for (let wx = s.x0; wx <= s.x1; wx += 8) {
-        ctx.lineTo(wx - camX, hillHeight(wx, s));
-      }
-      ctx.lineTo(s.x1 - camX, H);
-      ctx.closePath();
-      ctx.fillStyle = "rgba(0,120,150,0.12)";
-      ctx.fill();
-      ctx.shadowBlur = 14;
+      ctx.lineWidth = 9; ctx.strokeStyle = "#5a9e3f";
+      ctx.lineJoin = "round"; ctx.stroke();
+      // ciemniejszy zarys
+      ctx.lineWidth = 2; ctx.strokeStyle = "#3e6b2c"; ctx.stroke();
     });
-    ctx.shadowBlur = 0;
   }
 
   function drawCoins() {
@@ -495,15 +500,12 @@ window.Game = (function () {
       if (c.got) return;
       const sx = c.x - camX;
       if (sx < -30 || sx > W + 30) return;
-      const pulse = 1 + Math.sin(performance.now() / 200 + c.x) * 0.12;
-      ctx.beginPath();
-      ctx.arc(sx, c.y, 11 * pulse, 0, 6.28);
-      ctx.fillStyle = "#ffd23f";
-      ctx.shadowColor = "#ffd23f"; ctx.shadowBlur = 16;
-      ctx.fill();
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = "#7a5b00";
-      ctx.font = "bold 11px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      // moneta z prostym cieniowaniem
+      ctx.beginPath(); ctx.arc(sx, c.y, 11, 0, 6.28);
+      ctx.fillStyle = "#f4c531"; ctx.fill();
+      ctx.lineWidth = 2; ctx.strokeStyle = "#b5891a"; ctx.stroke();
+      ctx.fillStyle = "#8a6a12";
+      ctx.font = "bold 12px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
       ctx.fillText("T", sx, c.y + 1);
     });
     ctx.restore();
@@ -519,39 +521,50 @@ window.Game = (function () {
   }
 
   function drawBike() {
-    const skin = window.Economy ? Economy.getSelectedSkin() : { color: "#00e5ff", trail: "#00e5ff" };
+    const skin = window.Economy ? Economy.getSelectedSkin() : { color: "#cc3322" };
     const sx = bike.x - camX, sy = bike.y;
+
+    // cień na ziemi
+    if (bike.onGround) {
+      ctx.save();
+      ctx.fillStyle = "rgba(0,0,0,0.22)";
+      ctx.beginPath(); ctx.ellipse(sx, sy + 13, 22, 5, 0, 0, 6.28); ctx.fill();
+      ctx.restore();
+    }
+
     ctx.save();
     ctx.translate(sx, sy);
     ctx.rotate(bike.angle);
 
-    // smuga
-    ctx.strokeStyle = skin.trail; ctx.globalAlpha = 0.25;
-    ctx.lineWidth = 8;
-    ctx.beginPath(); ctx.moveTo(-60, 6); ctx.lineTo(-14, 6); ctx.stroke();
-    ctx.globalAlpha = 1;
-
-    ctx.shadowColor = skin.color; ctx.shadowBlur = 18;
-    // koła
-    ctx.strokeStyle = skin.color; ctx.lineWidth = 3; ctx.fillStyle = "#101020";
+    // koła (czarne opony + felga)
     [-14, 16].forEach(function (wx) {
-      ctx.beginPath(); ctx.arc(wx, 6, 11, 0, 6.28); ctx.fill(); ctx.stroke();
-      // szprychy
+      ctx.beginPath(); ctx.arc(wx, 6, 11, 0, 6.28);
+      ctx.fillStyle = "#1c1c1c"; ctx.fill();
+      ctx.lineWidth = 3; ctx.strokeStyle = "#000"; ctx.stroke();
+      ctx.beginPath(); ctx.arc(wx, 6, 4.5, 0, 6.28); ctx.fillStyle = "#9aa0a6"; ctx.fill();
       ctx.save(); ctx.translate(wx, 6); ctx.rotate(bike.wheelSpin);
+      ctx.strokeStyle = "#c8ccd0"; ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(8, 0); ctx.moveTo(0, -8); ctx.lineTo(0, 8); ctx.stroke();
       ctx.restore();
     });
-    // rama
+
+    // korpus / bak motocykla (kolor skiny)
+    ctx.fillStyle = skin.color;
     ctx.beginPath();
-    ctx.moveTo(-14, 6); ctx.lineTo(-2, -8); ctx.lineTo(14, -10); ctx.lineTo(16, 6);
-    ctx.strokeStyle = skin.color; ctx.lineWidth = 3; ctx.stroke();
+    ctx.moveTo(-12, 6); ctx.lineTo(-6, -6); ctx.lineTo(10, -8);
+    ctx.lineTo(16, 0); ctx.lineTo(14, 6); ctx.closePath(); ctx.fill();
+    ctx.lineWidth = 1.5; ctx.strokeStyle = "rgba(0,0,0,0.35)"; ctx.stroke();
+    // kierownica
+    ctx.strokeStyle = "#222"; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(12, -6); ctx.lineTo(20, -12); ctx.stroke();
+
     // kierowca
-    ctx.beginPath();
-    ctx.moveTo(0, -8); ctx.lineTo(2, -20); ctx.lineTo(14, -12);
-    ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 3; ctx.stroke();
-    ctx.beginPath(); ctx.arc(2, -24, 4, 0, 6.28); ctx.fillStyle = "#fff"; ctx.fill();
+    ctx.strokeStyle = "#2b3a55"; ctx.lineWidth = 5; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(-2, -6); ctx.lineTo(3, -18); ctx.lineTo(16, -11); ctx.stroke();
+    ctx.fillStyle = "#e9d6b8"; // ręce/szyja
+    ctx.beginPath(); ctx.arc(3, -22, 4.5, 0, 6.28); ctx.fillStyle = "#c0352b"; ctx.fill(); // kask
+    ctx.strokeStyle = "rgba(0,0,0,0.3)"; ctx.lineWidth = 1; ctx.stroke();
     ctx.restore();
-    ctx.shadowBlur = 0;
   }
 
   function drawFloatingMsg() {
@@ -559,10 +572,11 @@ window.Game = (function () {
       msgTime -= 0.016;
       ctx.save();
       ctx.globalAlpha = Math.min(1, msgTime * 2);
-      ctx.fillStyle = "#aaff00";
-      ctx.font = "bold 34px 'Segoe UI', sans-serif";
       ctx.textAlign = "center";
-      ctx.shadowColor = "#aaff00"; ctx.shadowBlur = 20;
+      ctx.font = "bold 34px 'Segoe UI', sans-serif";
+      ctx.lineWidth = 5; ctx.strokeStyle = "rgba(0,0,0,0.55)";
+      ctx.strokeText(msgText, W / 2, H * 0.28);
+      ctx.fillStyle = "#ffd23f";
       ctx.fillText(msgText, W / 2, H * 0.28);
       ctx.restore();
     }
@@ -622,6 +636,8 @@ window.Game = (function () {
     revive: revive,
     gameOver: gameOver,
     reviveCost: reviveCost,
+    toggleMute: function () { muted = !muted; if (muted) engineOff(); return muted; },
+    get muted() { return muted; },
     setMenu: function () { state = "menu"; engineOff(); onStateChange("menu", {}); }
   };
 })();
