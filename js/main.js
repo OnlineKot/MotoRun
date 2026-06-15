@@ -33,7 +33,7 @@
   function updateHud(d) {
     $("hud-score").textContent = d.score;
     $("hud-dist").textContent = d.distance + " m · " + d.speed + " km/h";
-    $("hud-combo").textContent = d.combo > 0 ? ("COMBO x" + (1 + d.combo)) : "";
+    $("hud-combo").textContent = d.multiplier > 1 ? ("MNOŻNIK x" + d.multiplier.toFixed(2)) : "";
     $("hud-teo").textContent = "🪙 " + d.teopoints;
   }
 
@@ -131,9 +131,14 @@
         $("over-score").textContent = s.score;
         $("over-dist").textContent = Math.floor(s.distance) + " m";
         $("over-flips").textContent = s.flips;
-        $("over-best-combo").textContent = "x" + (1 + s.bestCombo);
+        $("over-best-combo").textContent = "x" + (1 + s.bestCombo * 0.25).toFixed(2);
         $("over-earned").textContent = "+" + data.earned;
-        $("over-reason").textContent = data.reason || "";
+        const bd = data.breakdown || {};
+        if (bd.newRecord) {
+          $("over-reason").textContent = "🏆 NOWY REKORD! +" + data.earned + " 🪙 (1 TEO za 10 pkt ponad rekord)";
+        } else {
+          $("over-reason").textContent = "Rekord do pobicia: " + bd.record + " pkt — TEO dostajesz dopiero za rekord!";
+        }
         showScreen(screenOver);
         finalizeRunUI(s);
       } else if (st === "menu") {

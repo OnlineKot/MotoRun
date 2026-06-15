@@ -304,8 +304,8 @@ window.Game = (function () {
     });
     particles = particles.filter(function (p) { return p.life > 0; });
 
-    // wynik = dystans * mnożnik combo
-    stats.score = Math.floor(stats.distance * 10 + stats.flips * 100 + stats.coins * 4);
+    // wynik bazowy * mnożnik combo (salta podbijają wynik -> łatwiej o rekord)
+    stats.score = Math.floor((stats.distance * 10 + stats.flips * 100 + stats.coins * 4) * stats.multiplier);
     pushHud();
   }
 
@@ -599,6 +599,7 @@ window.Game = (function () {
       distance: Math.floor(stats.distance),
       flips: stats.flips,
       combo: stats.combo,
+      multiplier: stats.multiplier,
       speed: Math.round(bike.vx * 0.3),
       teopoints: window.Economy ? Economy.teopoints : 0
     });

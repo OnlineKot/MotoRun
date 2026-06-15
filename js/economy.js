@@ -23,7 +23,7 @@ window.Economy = (function () {
 
   const defaultProfile = {
     teopoints: CFG.ECONOMY.startingTeopoints,
-    highScore: 0,
+    highScore: 200,   // rekord bazowy – od niego trzeba się odbić, by zdobyć TEO
     bestDistance: 0,
     ownedSkins: ["neon"],
     selectedSkin: "neon",
@@ -165,27 +165,29 @@ window.Economy = (function () {
       return CATALOG.find(function (s) { return s.id === profile.selectedSkin; }) || CATALOG[0];
     },
 
-    /* Wywoływane na koniec przejazdu – zapisuje wynik + przelicza TEO.
-     * Nagroda jest ograniczona anti-cheatowym limitem maxRewardPerRun. */
+    /* Wywoływane na koniec przejazdu.
+     * TEOpoints zdobywasz WYŁĄCZNIE za pobicie rekordu:
+     * 1 TEO za każde 10 punktów ponad dotychczasowy rekord (bazowo 200).
+     * Mnożnik combo podbija wynik w grze, więc łatwiej o rekord. */
     finishRun: function (stats) {
-      const earnedDist  = Math.floor(stats.distance * CFG.ECONOMY.teopointsPerMeter);
-      const earnedFlip  = stats.flips * CFG.ECONOMY.teopointsPerFlip;
-      const earnedPerf  = stats.perfectLandings * CFG.ECONOMY.perfectLandingBonus;
-      const cap   = CFG.ECONOMY.maxRewardPerRun || 5000;
-      const earned = Math.min(earnedDist + earnedFlip + earnedPerf + stats.coins, cap);
+      const RECORD_BASE = 200;
+      const oldRecord = Math.max(profile.highScore, RECORD_BASE);
+      const beat = Math.max(0, stats.score - oldRecord);
+      const cap = CFG.ECONOMY.maxRewardPerRun || 400;
+      const earned = Math.min(Math.floor(beat / 10), cap); // 1 TEO / 10 pkt ponad rekord
 
       profile.totalRuns  += 1;
-      profile.highScore   = Math.max(profile.highScore, stats.score);
+      profile.highScore   = Math.max(oldRecord, stats.score);
       profile.bestDistance = Math.max(profile.bestDistance, Math.floor(stats.distance));
-      creditTeo(earned, "MotoRun: dystans " + Math.floor(stats.distance) + " m");
+      if (earned > 0) creditTeo(earned, "MotoRun: rekord " + stats.score + " pkt (+" + earned + ")");
       persist();
 
       window.Analytics.track("game_over", {
         score: stats.score, distance: Math.floor(stats.distance),
-        flips: stats.flips, teopoints_earned: earned, total_runs: profile.totalRuns,
-        tfcard: !!tf()
+        flips: stats.flips, teopoints_earned: earned, record: profile.highScore,
+        total_runs: profile.totalRuns, tfcard: !!tf()
       });
-      return { earned: earned, breakdown: { earnedDist: earnedDist, earnedFlip: earnedFlip, earnedPerf: earnedPerf, coins: stats.coins } };
+      return { earned: earned, breakdown: { record: oldRecord, beat: beat, newRecord: stats.score > oldRecord } };
     },
 
     checkDailyStreak: checkDailyStreak
