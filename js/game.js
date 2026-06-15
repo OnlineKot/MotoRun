@@ -92,9 +92,9 @@ window.Game = (function () {
       const groundLen = 480 + rng() * 540;
       const amp = 16 + rng() * (30 + difficulty * 34);
       pushGround(groundLen, amp);
-      // przerwa: węższa, by dało się ją przeskoczyć z rozpędu
-      if (rng() < 0.4 + difficulty * 0.25) {
-        const gap = 90 + rng() * (50 + difficulty * 90);
+      // przerwa: rzadsza i węższa, by dało się ją przeskoczyć z rozpędu
+      if (rng() < 0.3 + difficulty * 0.25) {
+        const gap = 80 + rng() * (40 + difficulty * 80);
         pushGap(gap);
       }
     }
@@ -320,7 +320,7 @@ window.Game = (function () {
     // znormalizuj kąt nadwozia do [-PI, PI] względem nachylenia terenu
     let diff = bike.angle - groundAngle;
     diff = Math.atan2(Math.sin(diff), Math.cos(diff));
-    const tol = 0.55; // ~31 stopni tolerancji
+    const tol = 0.95; // ~54 stopnie tolerancji – wybaczające lądowanie
     if (Math.abs(diff) > tol) {
       crash("Zła pozycja przy lądowaniu!");
       return;
@@ -338,13 +338,13 @@ window.Game = (function () {
       stats.combo += flipsDone;
       stats.bestCombo = Math.max(stats.bestCombo, stats.combo);
       stats.multiplier = 1 + stats.combo * 0.25;
-      burst(bike.x, bike.y, "#00e5ff", 16);
+      burst(bike.x, bike.y, "#ffd23f", 16);
       window.Analytics && Analytics.track("flip", { count: flipsDone, combo: stats.combo });
       flashMsg(flipsDone + "x SALTO!  combo " + stats.combo);
     }
-    if (Math.abs(diff) < 0.16) { // idealne lądowanie
+    if (Math.abs(diff) < 0.28) { // idealne lądowanie (bardziej wyrozumiałe)
       stats.perfectLandings += 1;
-      burst(bike.x, bike.y, "#aaff00", 12);
+      burst(bike.x, bike.y, "#5a9e3f", 12);
       flashMsg("PERFECT!");
     }
   }
@@ -352,7 +352,7 @@ window.Game = (function () {
   let msgText = "", msgTime = 0;
   function flashMsg(txt) { msgText = txt; msgTime = 1.1; }
 
-  function reviveCost() { return 100 * Math.pow(2, reviveCount); } // 100, 200, 400...
+  function reviveCost() { return 15 + reviveCount * 15; } // 15, 30, 45...
 
   function crash(reason) {
     if (state !== "running") return;
