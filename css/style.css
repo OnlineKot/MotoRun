@@ -89,4 +89,65 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #07071a;
   letter-spacing: 8px; margin-bottom: 10px; outline: none; }
 .pin-input::placeholder { letter-spacing: normal; color: #6a6a9a; }
 
-@media (max-width: 420px) { .logo { font-size: 44px; } .panel { padding: 22px 18px; } }
+/* ---------- rząd przycisków funkcji w menu ---------- */
+.feature-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 14px 0; }
+.feat { position: relative; background: rgba(0,0,0,0.3); border: 1px solid rgba(0,229,255,0.3);
+  border-radius: 12px; padding: 8px 2px; font-size: 22px; cursor: pointer; color: #eaeaff;
+  display: flex; flex-direction: column; align-items: center; gap: 2px; transition: transform .1s, background .2s; }
+.feat span { font-size: 10px; color: #b9b9e6; }
+.feat:hover { background: rgba(0,229,255,0.12); }
+.feat:active { transform: scale(.95); }
+.badge { position: absolute; top: -5px; right: -3px; background: #ff2d95; color: #fff;
+  font-size: 11px; font-style: normal; font-weight: 800; min-width: 18px; height: 18px;
+  border-radius: 9px; display: flex; align-items: center; justify-content: center; padding: 0 4px;
+  box-shadow: 0 0 8px #ff2d95; }
+
+/* ---------- nagłówki ekranów funkcji ---------- */
+.feat-title { color: #00e5ff; text-shadow: 0 0 16px #00e5ff; font-size: 26px; }
+.feat-sub { font-size: 13px; color: #9a9ad0; margin: 6px 0 14px; }
+.btn-back { margin-top: 12px; }
+.btn-small { width: auto; padding: 10px 14px; margin: 0; font-size: 14px; }
+
+/* ---------- listy (misje, ranking) ---------- */
+.list { display: flex; flex-direction: column; gap: 8px; max-height: 56vh; overflow-y: auto; padding: 2px; }
+.list-row { display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.3);
+  border-radius: 12px; padding: 10px 12px; text-align: left; }
+.list-row.done { opacity: 0.6; }
+.lr-icon { font-size: 24px; }
+.rank-pos { font-size: 18px; font-weight: 900; width: 34px; text-align: center; color: #ffd23f; }
+.lr-main { flex: 1; min-width: 0; }
+.lr-title { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lr-sub { font-size: 11px; color: #9a9ad0; margin-top: 2px; }
+.lr-reward { font-size: 14px; font-weight: 800; color: #ffd23f; }
+.bar { height: 6px; background: rgba(255,255,255,0.12); border-radius: 4px; overflow: hidden; margin: 5px 0; }
+.bar i { display: block; height: 100%; background: linear-gradient(90deg,#00e5ff,#aaff00); }
+.lr-empty { text-align: center; color: #9a9ad0; padding: 20px; }
+.nick-row { display: flex; gap: 8px; margin-bottom: 12px; }
+.nick-input { flex: 1; padding: 10px 12px; border-radius: 10px; border: 2px solid #00e5ff;
+  background: rgba(0,0,0,0.4); color: #fff; outline: none; }
+
+/* ---------- kolekcja / osiągnięcia ---------- */
+.collection-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); gap: 10px;
+  max-height: 56vh; overflow-y: auto; padding: 2px; }
+.coll-item { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px;
+  padding: 12px 6px; text-align: center; opacity: 0.55; }
+.coll-item.owned { opacity: 1; border-color: #aaff00; box-shadow: 0 0 12px rgba(170,255,0,0.3); }
+.coll-emoji { font-size: 30px; }
+.coll-name { font-size: 11px; color: #c5c5f0; margin-top: 4px; }
+.coll-rew { font-size: 11px; color: #ffd23f; margin-top: 2px; }
+
+/* ---------- koło szczęścia ---------- */
+.wheel-wrap { position: relative; width: 220px; height: 220px; margin: 10px auto 4px; }
+.wheel-pointer { position: absolute; top: -6px; left: 50%; transform: translateX(-50%);
+  font-size: 26px; color: #fff; z-index: 3; text-shadow: 0 0 8px #000; }
+.wheel { width: 220px; height: 220px; border-radius: 50%; position: relative;
+  border: 6px solid #14102e; box-shadow: 0 0 26px rgba(0,229,255,0.4), inset 0 0 20px rgba(0,0,0,0.5); }
+.wheel-label { position: absolute; top: 50%; left: 50%; margin: -10px 0 0 -20px; width: 40px;
+  text-align: center; font-size: 12px; font-weight: 800; color: #04132b; }
+.wheel-result { min-height: 22px; margin: 10px 0; font-weight: 800; color: #aaff00; }
+
+/* ---------- revive ---------- */
+.revive-title { font-size: 34px; color: #ff2d95; text-shadow: 0 0 18px #ff2d95; }
+.revive-q { margin: 10px 0 14px; font-size: 16px; color: #eaeaff; }
+
+@media (max-width: 420px) { .logo { font-size: 44px; } .panel { padding: 22px 18px; } .feat { font-size: 18px; } }

@@ -111,6 +111,11 @@ window.Game = (function () {
     }
   }
 
+  /* --- revive / nietykalność --- */
+  let invuln = 0;          // s nietykalności po wskrzeszeniu
+  let reviveCount = 0;     // ile razy wskrzeszono w tej rundzie
+  let lastReason = "";
+
   /* --- statystyki rundy --- */
   let stats;
   function resetStats() {
@@ -137,6 +142,7 @@ window.Game = (function () {
   }
 
   function update(dt) {
+    if (invuln > 0) invuln -= dt;
     // ruch poziomy świata (stała prędkość)
     bike.x += SPEED * dt;
     stats.distance += SPEED * dt / 32; // ~metry
@@ -247,13 +253,57 @@ window.Game = (function () {
   let msgText = "", msgTime = 0;
   function flashMsg(txt) { msgText = txt; msgTime = 1.1; }
 
+  function reviveCost() { return 100 * Math.pow(2, reviveCount); } // 100, 200, 400...
+
   function crash(reason) {
     if (state !== "running") return;
-    state = "crashed";
+    if (invuln > 0) return; // chwilowa nietykalność po wskrzeszeniu
+    state = "revive";
+    lastReason = reason;
+    bike.pressing = false;
     burst(bike.x, bike.y, "#ff2d95", 30);
     window.Analytics && Analytics.track("crash", { reason: reason, distance: Math.floor(stats.distance) });
-    const result = window.Economy ? Economy.finishRun(stats) : { earned: 0 };
-    onStateChange("crashed", { stats: stats, reason: reason, earned: result.earned, breakdown: result.breakdown });
+    const cost = reviveCost();
+    onStateChange("revive", {
+      stats: stats, reason: reason, reviveCost: cost,
+      canAfford: window.Economy ? Economy.teopoints >= cost : false
+    });
+  }
+
+  // znajdź początek najbliższego segmentu ziemi za x
+  function findSafeGroundAfter(x) {
+    ensureWorld();
+    for (let i = 0; i < segments.length; i++) {
+      const s = segments[i];
+      if (s.type === "ground" && s.x1 > x + 40) return Math.max(x, s.x0) + 30;
+    }
+    return x + 300;
+  }
+
+  function revive() {
+    if (state !== "revive") return;
+    reviveCount++;
+    const safeX = findSafeGroundAfter(bike.x);
+    bike.x = safeX;
+    camX = bike.x - 140;
+    ensureWorld();
+    const gy = groundYAtRaw(bike.x);
+    bike.y = (gy !== null) ? gy : H * GROUND_BASE;
+    bike.vy = 0; bike.angle = 0; bike.onGround = true;
+    bike.airRotation = 0; bike.pressing = false;
+    invuln = 1.4;
+    burst(bike.x, bike.y, "#aaff00", 24);
+    flashMsg("WSKRZESZENIE!");
+    state = "running";
+    window.Analytics && Analytics.track("revive", { count: reviveCount });
+    onStateChange("running", {});
+  }
+
+  function gameOver() {
+    if (state === "gameover") return;
+    state = "gameover";
+    const result = window.Economy ? Economy.finishRun(stats) : { earned: 0, breakdown: {} };
+    onStateChange("gameover", { stats: stats, reason: lastReason, earned: result.earned, breakdown: result.breakdown });
   }
 
   /* ============================ RENDER ============================ */
@@ -450,12 +500,16 @@ window.Game = (function () {
       worldEnd = 0;
       pushGround(900, 10); // bezpieczny start
       resetBike(); resetStats();
+      invuln = 0; reviveCount = 0; lastReason = "";
       state = "running";
       window.Analytics && Analytics.track("game_start", {});
       onStateChange("running", {});
     },
 
     get state() { return state; },
+    revive: revive,
+    gameOver: gameOver,
+    reviveCost: reviveCost,
     setMenu: function () { state = "menu"; onStateChange("menu", {}); }
   };
 })();

@@ -29,6 +29,9 @@ const app = initializeApp(firebaseConfig, "tfcard");
 const db  = getFirestore(app);
 const ref = doc(db, "tfcard", "state");
 
+/* Współdzielona instancja Firestore dla innych modułów (np. ranking). */
+window.__MOTORUN_FB = { app: app, db: db };
+
 const LS_UID  = "motorun_tf_uid";
 const LS_NAME = "motorun_tf_name";
 const MAX_REWARD_PER_RUN =
@@ -149,6 +152,7 @@ window.TFCard = {
   get uid() { return uid; },
   get name() { return name; },
   get balance() { return balance; },
+  get authUid() { const u = getAuth(app).currentUser; return u ? u.uid : null; },
   connect: connect,
   disconnect: disconnect,
   earn: earn,

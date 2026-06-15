@@ -18,6 +18,18 @@ To statyczna strona — nie wymaga budowania.
 
 `klik myszy` / `dotyk` / `spacja` / `↑` — gaz i salto w powietrzu. Ląduj prosto!
 
+## 🔥 Mechaniki angażujące (styl „Żappki")
+
+- 💎 **Revive** — po crashu kontynuujesz przejazd za TEOpoints (koszt rośnie: 100, 200, 400…).
+- 🎯 **Misje dzienne** — 3 misje/dzień (te same dla wszystkich), nagroda w TEOpoints.
+- 🎡 **Koło Szczęścia** — jeden darmowy spin dziennie (TEO, JACKPOT, naklejki).
+- 🏷️ **Kolekcja naklejek** — losowy drop po przejeździe; komplet = duża nagroda + nowy sezon.
+- 🏅 **Osiągnięcia** — jednorazowe nagrody za kamienie milowe.
+- 🏆 **Ranking** — globalna tablica wyników (Firestore).
+- 🔥 **Seria dzienna (streak)** — rosnąca nagroda za codzienne granie.
+
+Wszystkie nagrody trafiają do salda TEOpoints (TF CARD gdy połączony, inaczej lokalnie).
+
 ## 🪙 TEOpoints i 💳 TFcard
 
 - TEOpoints zdobywasz za dystans, salta, perfekcyjne lądowania, monety i dzienną serię.
@@ -52,6 +64,18 @@ MotoRun synchronizuje TEOpoints z prawdziwym kontem gracza w **TF CARD**
 
 > Konfiguracja Firebase TF CARD jest wpisana w `js/teopoints.js`. Klucze
 > Firebase Web są publiczne z założenia — dostępu pilnują reguły Firestore.
+
+### Ranking – reguły Firestore (projekt `tf-card`)
+
+Ranking trzyma wyniki w kolekcji `motorun_scores/<uid>`. Dodaj regułę
+(obok reguły na `tfcard/state`):
+
+```
+match /motorun_scores/{uid} {
+  allow read: if true;                                  // ranking publiczny
+  allow write: if request.auth != null && request.auth.uid == uid;
+}
+```
 
 ## ⚙️ Konfiguracja (wszystko w `js/config.js`)
 

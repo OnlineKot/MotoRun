@@ -114,6 +114,17 @@ window.Economy = (function () {
       persist();
     },
 
+    /* Wydanie TEO (np. Revive). TF CARD gdy połączony, inaczej lokalnie. */
+    spend: async function (amount, title) {
+      amount = Math.round(amount);
+      const t = tf();
+      if (t) { return await t.spend(amount, title || "MotoRun: koszt"); }
+      if (profile.teopoints < amount) return { ok: false, reason: "Za mało TEOpoints." };
+      profile.teopoints -= amount;
+      persist();
+      return { ok: true };
+    },
+
     /* Zakup skinu w TFcard – bez karty, tylko TEOpoints.
      * Async: gdy połączony TF CARD, koszt jest pobierany z konta na serwerze. */
     buySkin: async function (skinId) {

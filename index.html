@@ -41,6 +41,15 @@
 
       <button id="btn-play" class="btn btn-primary">▶ GRAJ</button>
       <button id="btn-shop" class="btn">💳 TFcard – sklep</button>
+
+      <div class="feature-row">
+        <button id="btn-missions" class="feat">🎯<span>Misje</span><i id="badge-missions" class="badge hidden"></i></button>
+        <button id="btn-wheel" class="feat">🎡<span>Koło</span><i id="badge-wheel" class="badge hidden">!</i></button>
+        <button id="btn-collection" class="feat">🏷️<span>Kolekcja</span></button>
+        <button id="btn-leaderboard" class="feat">🏆<span>Ranking</span></button>
+        <button id="btn-achievements" class="feat">🏅<span>Osiągi</span></button>
+      </div>
+
       <button id="btn-connect" class="btn">💳 Połącz konto TF CARD</button>
 
       <div id="auth-box" class="auth-box">…</div>
@@ -76,6 +85,75 @@
     </div>
   </div>
 
+  <!-- MISJE DZIENNE -->
+  <div id="screen-missions" class="screen hidden">
+    <div class="panel panel-wide">
+      <h2 class="feat-title">🎯 Misje dzienne</h2>
+      <p class="feat-sub">Resetują się codziennie. Ukończ je dla TEOpoints!</p>
+      <div id="missions-list" class="list"></div>
+      <button class="btn btn-back" data-back>← Wróć</button>
+    </div>
+  </div>
+
+  <!-- KOŁO SZCZĘŚCIA -->
+  <div id="screen-wheel" class="screen hidden">
+    <div class="panel">
+      <h2 class="feat-title">🎡 Koło Szczęścia</h2>
+      <p class="feat-sub">Jeden darmowy spin dziennie!</p>
+      <div class="wheel-wrap">
+        <div class="wheel-pointer">▼</div>
+        <div id="wheel" class="wheel"></div>
+      </div>
+      <div id="wheel-result" class="wheel-result"></div>
+      <button id="btn-spin" class="btn btn-primary">🎰 Zakręć</button>
+      <button class="btn btn-back" data-back>← Wróć</button>
+    </div>
+  </div>
+
+  <!-- KOLEKCJA -->
+  <div id="screen-collection" class="screen hidden">
+    <div class="panel panel-wide">
+      <h2 class="feat-title">🏷️ Kolekcja naklejek</h2>
+      <p class="feat-sub" id="collection-sub">Zbierz wszystkie i zgarnij nagrodę!</p>
+      <div id="collection-grid" class="collection-grid"></div>
+      <button class="btn btn-back" data-back>← Wróć</button>
+    </div>
+  </div>
+
+  <!-- RANKING -->
+  <div id="screen-leaderboard" class="screen hidden">
+    <div class="panel panel-wide">
+      <h2 class="feat-title">🏆 Ranking</h2>
+      <div class="nick-row">
+        <input id="nick-input" class="nick-input" maxlength="16" placeholder="Twój nick" />
+        <button id="btn-nick-save" class="btn btn-small">Zapisz</button>
+      </div>
+      <div id="leaderboard-list" class="list">Ładowanie…</div>
+      <button class="btn btn-back" data-back>← Wróć</button>
+    </div>
+  </div>
+
+  <!-- OSIĄGNIĘCIA -->
+  <div id="screen-achievements" class="screen hidden">
+    <div class="panel panel-wide">
+      <h2 class="feat-title">🏅 Osiągnięcia</h2>
+      <p class="feat-sub" id="achievements-sub"></p>
+      <div id="achievements-grid" class="collection-grid"></div>
+      <button class="btn btn-back" data-back>← Wróć</button>
+    </div>
+  </div>
+
+  <!-- REVIVE (po crashu) -->
+  <div id="screen-revive" class="screen hidden">
+    <div class="panel">
+      <h2 class="revive-title">💥 Crash!</h2>
+      <p id="revive-reason" class="over-reason"></p>
+      <p class="revive-q">Kontynuować przejazd?</p>
+      <button id="btn-revive" class="btn btn-primary">💎 Wskrzeszenie za <span id="revive-cost">0</span> 🪙</button>
+      <button id="btn-revive-no" class="btn btn-ghost">Odpuść</button>
+    </div>
+  </div>
+
   <!-- KONIEC GRY -->
   <div id="screen-over" class="screen hidden">
     <div class="panel">
@@ -102,9 +180,14 @@
   <script src="js/analytics.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/economy.js"></script>
+  <script src="js/missions.js"></script>
+  <script src="js/collection.js"></script>
+  <script src="js/achievements.js"></script>
+  <script src="js/wheel.js"></script>
   <script src="js/game.js"></script>
   <script src="js/main.js"></script>
-  <!-- Integracja TEOpoints ↔ TF CARD (Firebase modular SDK, ESM z CDN) -->
+  <!-- Integracja TEOpoints ↔ TF CARD + ranking (Firebase modular SDK, ESM z CDN) -->
   <script type="module" src="js/teopoints.js"></script>
+  <script type="module" src="js/leaderboard.js"></script>
 </body>
 </html>
