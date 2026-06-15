@@ -14,7 +14,7 @@ window.MOTORUN_CONFIG = {
   /* --- Microsoft Clarity ---
    * Wklej swój Project ID z kodu Clarity (ten ciąg z clarity.ms/tag/XXXXX).
    * Np. "abcd1234ef". */
-  CLARITY_PROJECT_ID: "XXXXXXXXXX",
+  CLARITY_PROJECT_ID: "x7he4s6cjn",
 
   /* --- Firebase ---
    * Skopiuj obiekt z konsoli Firebase: Ustawienia projektu > Twoje aplikacje > Web.
