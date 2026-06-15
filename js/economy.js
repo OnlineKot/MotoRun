@@ -93,12 +93,10 @@ window.Economy = (function () {
     init: function () {
       loadLocal();
       emit();
-      // Po zalogowaniu dociągnij profil z chmury i scal.
-      if (window.Auth) {
-        window.Auth.onChange(function (user) {
-          if (user) window.Auth.loadProfile().then(mergeCloud);
-        });
-      }
+      // Po zalogowaniu (zdarzenie z modułu TF CARD) dociągnij profil z chmury i scal.
+      window.addEventListener("tfcard-auth", function (e) {
+        if (e.detail && e.detail.user && window.Auth) window.Auth.loadProfile().then(mergeCloud);
+      });
     },
     onChange: function (fn) { listeners.push(fn); fn(profile); },
     get profile() { return profile; },

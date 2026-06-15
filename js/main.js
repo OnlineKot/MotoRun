@@ -46,24 +46,56 @@
   }
   window.Economy.onChange(refreshProfileBar);
 
-  /* --- stan logowania --- */
-  window.Auth.onChange(function (user) {
+  /* --- stan logowania (Google + e-mail/hasło) --- */
+  function esc(s) { return String(s || "").replace(/[<>"']/g, ""); }
+  function renderAuthBox(user) {
     const box = $("auth-box");
-    if (user && !user.isAnonymous) {
-      box.innerHTML = '👤 ' + (user.displayName || user.email || "Gracz") +
+    if (user && !user.anon) {
+      box.innerHTML = '👤 ' + esc(user.name || user.email || "Gracz") +
         ' <button id="btn-logout" class="link">wyloguj</button>';
-      $("btn-logout").onclick = function () { window.Auth.logout(); };
-    } else if (user && user.isAnonymous) {
-      box.innerHTML = '👤 Gość <button id="btn-google2" class="link">zaloguj Google</button>';
-      $("btn-google2").onclick = function () { window.Auth.loginGoogle(); };
-    } else {
-      box.innerHTML = window.Auth.enabled
-        ? '<button id="btn-google" class="link">Zaloguj przez Google</button> · <button id="btn-guest" class="link">Graj jako gość</button>'
-        : '🔒 Tryb offline (skonfiguruj Firebase w js/config.js)';
-      if ($("btn-google")) $("btn-google").onclick = function () { window.Auth.loginGoogle(); };
-      if ($("btn-guest")) $("btn-guest").onclick = function () { window.Auth.loginGuest(); };
+      $("btn-logout").onclick = function () { if (window.Auth) window.Auth.logout(); };
+      return;
     }
-  });
+    const guest = user && user.anon ? '<div class="auth-guest">Grasz jako gość</div>' : "";
+    box.innerHTML = guest +
+      '<button id="btn-google" class="btn btn-google">Zaloguj przez Google</button>' +
+      '<div class="auth-or">lub e-mailem</div>' +
+      '<input id="auth-email" class="auth-input" type="email" placeholder="E-mail" autocomplete="username" />' +
+      '<input id="auth-pass" class="auth-input" type="password" placeholder="Hasło" autocomplete="current-password" />' +
+      '<div class="auth-actions">' +
+        '<button id="btn-email-login" class="btn btn-small">Zaloguj</button>' +
+        '<button id="btn-email-register" class="btn btn-small btn-primary">Załóż konto</button>' +
+      '</div>' +
+      '<button id="btn-forgot" class="link">Nie pamiętam hasła</button>';
+
+    $("btn-google").onclick = function () { if (window.Auth) window.Auth.loginGoogle().catch(function(){}); };
+    function creds() { return { e: ($("auth-email").value || "").trim(), p: $("auth-pass").value || "" }; }
+    $("btn-email-login").onclick = function () {
+      const c = creds(); if (!c.e || !c.p) { toast("Podaj e-mail i hasło."); return; }
+      window.Auth.loginEmail(c.e, c.p).then(function () { toast("Zalogowano ✓"); })
+        .catch(function (err) { toast(authErr(err)); });
+    };
+    $("btn-email-register").onclick = function () {
+      const c = creds(); if (!c.e || c.p.length < 6) { toast("Hasło min. 6 znaków."); return; }
+      window.Auth.registerEmail(c.e, c.p).then(function () { toast("Konto utworzone ✓"); })
+        .catch(function (err) { toast(authErr(err)); });
+    };
+    $("btn-forgot").onclick = function () {
+      const c = creds(); if (!c.e) { toast("Wpisz e-mail, wyślę link."); return; }
+      window.Auth.resetPassword(c.e).then(function () { toast("Wysłano link resetu na e-mail."); })
+        .catch(function (err) { toast(authErr(err)); });
+    };
+  }
+  function authErr(err) {
+    const m = { "auth/invalid-email": "Niepoprawny e-mail.", "auth/user-not-found": "Nie ma takiego konta.",
+      "auth/wrong-password": "Złe hasło.", "auth/invalid-credential": "Złe dane logowania.",
+      "auth/email-already-in-use": "E-mail jest już zajęty.", "auth/weak-password": "Hasło za słabe (min. 6).",
+      "auth/operation-not-allowed": "Ta metoda logowania jest wyłączona w Firebase.",
+      "auth/unauthorized-domain": "Domena nieautoryzowana w Firebase." };
+    return (err && m[err.code]) || ("Błąd logowania: " + (err && err.message ? err.message : err));
+  }
+  window.addEventListener("tfcard-auth", function (e) { renderAuthBox(e.detail && e.detail.user); });
+  renderAuthBox(null);
 
   /* --- SKLEP TFcard --- */
   function renderShop() {
@@ -75,9 +107,9 @@
       const selected = p.selectedSkin === item.id;
       const card = document.createElement("div");
       card.className = "skin-card" + (selected ? " selected" : "");
-      card.style.borderColor = item.color;
+      if (selected) card.style.borderColor = item.color;
       card.innerHTML =
-        '<div class="skin-emoji" style="text-shadow:0 0 14px ' + item.color + '">' + item.emoji + '</div>' +
+        '<div class="skin-emoji">' + item.emoji + '</div>' +
         '<div class="skin-name">' + item.name + '</div>' +
         '<div class="skin-price">' + (item.price === 0 ? "DARMOWY" : "🪙 " + item.price) + '</div>' +
         '<button class="skin-btn">' +
