@@ -1,0 +1,9 @@
+rules_version = '2';
+// MotoRun – każdy zalogowany gracz może czytać/zapisywać tylko swój profil.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /players/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}

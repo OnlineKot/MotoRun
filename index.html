@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0a0a23" />
+  <title>MotoRun – Neon Moto Stunt 🏍️</title>
+  <meta name="description" content="MotoRun – uzależniająca gra motocyklowa. Rób salta, zbieraj TEOpoints i wydawaj je w TFcard!" />
+  <link rel="stylesheet" href="css/style.css" />
+
+  <!-- Firebase compat SDK (logowanie + chmura). Bez kluczy działa offline. -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+  <canvas id="game-canvas"></canvas>
+
+  <!-- HUD podczas gry -->
+  <div id="hud" class="hidden">
+    <div class="hud-left">
+      <div id="hud-score" class="hud-score">0</div>
+      <div id="hud-dist" class="hud-sub">0 m</div>
+    </div>
+    <div id="hud-combo" class="hud-combo"></div>
+    <div id="hud-teo" class="hud-teo">🪙 0</div>
+  </div>
+
+  <!-- MENU -->
+  <div id="screen-menu" class="screen">
+    <div class="panel">
+      <h1 class="logo">MOTO<span>RUN</span></h1>
+      <p class="tagline">Trzymaj, by robić salta. Ląduj prosto. Nie pękaj. 🔥</p>
+
+      <div class="profile-bar">
+        <div class="stat"><span id="teo-balance">0</span><label>🪙 TEOpoints</label></div>
+        <div class="stat"><span id="best-score">0</span><label>🏆 Rekord</label></div>
+        <div class="stat"><span id="streak">0</span><label>🔥 Seria dni</label></div>
+      </div>
+
+      <button id="btn-play" class="btn btn-primary">▶ GRAJ</button>
+      <button id="btn-shop" class="btn">💳 TFcard – sklep</button>
+
+      <div id="auth-box" class="auth-box">…</div>
+      <p class="hint">Sterowanie: <b>klik / dotyk / spacja</b> = gaz i salto.</p>
+    </div>
+  </div>
+
+  <!-- SKLEP TFcard -->
+  <div id="screen-shop" class="screen hidden">
+    <div class="panel panel-wide">
+      <div class="shop-head">
+        <h2>💳 TFcard</h2>
+        <div class="shop-balance">🪙 <span id="shop-teo">0</span> TEO</div>
+      </div>
+      <p class="shop-note">Płacisz tylko TEOpointsami – <b>bez karty i bez weryfikacji</b>.</p>
+      <div id="shop-grid" class="shop-grid"></div>
+      <button id="btn-shop-back" class="btn">← Wróć</button>
+    </div>
+  </div>
+
+  <!-- KONIEC GRY -->
+  <div id="screen-over" class="screen hidden">
+    <div class="panel">
+      <h2 class="over-title">CRASH! 💥</h2>
+      <p id="over-reason" class="over-reason"></p>
+      <div class="over-grid">
+        <div class="stat"><span id="over-score">0</span><label>Wynik</label></div>
+        <div class="stat"><span id="over-dist">0 m</span><label>Dystans</label></div>
+        <div class="stat"><span id="over-flips">0</span><label>Salta</label></div>
+        <div class="stat"><span id="over-best-combo">x1</span><label>Combo</label></div>
+      </div>
+      <div class="earned">Zarobiłeś <span id="over-earned">+0</span> 🪙 TEOpoints</div>
+      <button id="btn-again" class="btn btn-primary">↻ Jeszcze raz</button>
+      <button id="btn-over-shop" class="btn">💳 Wydaj w TFcard</button>
+      <button id="btn-menu" class="btn btn-ghost">Menu</button>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <!-- Skrypty (kolejność ma znaczenie) -->
+  <script src="js/config.js"></script>
+  <script src="js/analytics.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/economy.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
