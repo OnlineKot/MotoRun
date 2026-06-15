@@ -22,13 +22,13 @@ window.MOTORUN_CONFIG = {
    * Dopóki tu są placeholdery, logowanie chmurowe jest wyłączone,
    * a gra działa w trybie offline (gość + localStorage). */
   FIREBASE: {
-    apiKey:            "REPLACE_FIREBASE_API_KEY",
-    authDomain:        "REPLACE.firebaseapp.com",
-    projectId:         "REPLACE_PROJECT_ID",
-    storageBucket:     "REPLACE.appspot.com",
-    messagingSenderId: "REPLACE_SENDER_ID",
-    appId:             "REPLACE_APP_ID",
-    measurementId:     "G-XXXXXXXXXX"
+    apiKey:            "AIzaSyBZF27vUTccQRMlEHrBS4uN5PXi_ukNWyo",
+    authDomain:        "tf-card.firebaseapp.com",
+    projectId:         "tf-card",
+    storageBucket:     "tf-card.firebasestorage.app",
+    messagingSenderId: "1016438448701",
+    appId:             "1:1016438448701:web:d692ca0812e5c0795e0054",
+    measurementId:     "G-9BWVE69392"
   },
 
   /* --- TFcard / TEOpoints ---
