@@ -33,13 +33,18 @@ window.MOTORUN_CONFIG = {
 
   /* --- TFcard / TEOpoints ---
    * requireCardVerification: false  ->  zakupy BEZ karty i BEZ weryfikacji.
-   * Płacisz wyłącznie wirtualnymi TEOpointsami zdobytymi w grze. */
+   * Płacisz wyłącznie wirtualnymi TEOpointsami.
+   *
+   * UWAGA: gdy gracz połączy konto TF CARD (przez PIN), źródłem prawdy dla
+   * salda TEOpoints staje się Firestore TF CARD (kolekcja tfcard/state).
+   * Bez połączenia gra działa na lokalnym saldzie (localStorage). */
   ECONOMY: {
     requireCardVerification: false,
     startingTeopoints: 0,
     teopointsPerMeter: 0.5,     // ile TEO za metr dystansu
     teopointsPerFlip: 25,       // ile TEO za jedno salto
-    perfectLandingBonus: 15     // bonus za idealne lądowanie
+    perfectLandingBonus: 15,    // bonus za idealne lądowanie
+    maxRewardPerRun: 5000       // ANTI-CHEAT: górny limit TEO za jeden przejazd
   }
 };
 

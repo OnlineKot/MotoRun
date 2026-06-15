@@ -41,6 +41,7 @@
 
       <button id="btn-play" class="btn btn-primary">▶ GRAJ</button>
       <button id="btn-shop" class="btn">💳 TFcard – sklep</button>
+      <button id="btn-connect" class="btn">💳 Połącz konto TF CARD</button>
 
       <div id="auth-box" class="auth-box">…</div>
       <p class="hint">Sterowanie: <b>klik / dotyk / spacja</b> = gaz i salto.</p>
@@ -60,6 +61,21 @@
     </div>
   </div>
 
+  <!-- POŁĄCZ KONTO TF CARD -->
+  <div id="screen-connect" class="screen hidden">
+    <div class="panel">
+      <h2 class="connect-title">💳 Połącz konto TF CARD</h2>
+      <p class="connect-desc">Wpisz PIN swojego konta TF CARD. Twoje TEOpoints będą się
+        synchronizować na żywo z saldem i historią w aplikacji TF CARD.</p>
+      <div id="connect-status" class="connect-status">…</div>
+      <input id="connect-pin" type="password" inputmode="numeric" autocomplete="off"
+             maxlength="8" placeholder="PIN" class="pin-input" />
+      <button id="btn-connect-do" class="btn btn-primary">Połącz</button>
+      <button id="btn-disconnect" class="btn btn-ghost hidden">Odłącz konto</button>
+      <button id="btn-connect-back" class="btn btn-ghost">← Wróć</button>
+    </div>
+  </div>
+
   <!-- KONIEC GRY -->
   <div id="screen-over" class="screen hidden">
     <div class="panel">
@@ -74,6 +90,7 @@
       <div class="earned">Zarobiłeś <span id="over-earned">+0</span> 🪙 TEOpoints</div>
       <button id="btn-again" class="btn btn-primary">↻ Jeszcze raz</button>
       <button id="btn-over-shop" class="btn">💳 Wydaj w TFcard</button>
+      <button id="btn-over-connect" class="btn hidden">💳 Połącz konto TF CARD</button>
       <button id="btn-menu" class="btn btn-ghost">Menu</button>
     </div>
   </div>
@@ -87,5 +104,7 @@
   <script src="js/economy.js"></script>
   <script src="js/game.js"></script>
   <script src="js/main.js"></script>
+  <!-- Integracja TEOpoints ↔ TF CARD (Firebase modular SDK, ESM z CDN) -->
+  <script type="module" src="js/teopoints.js"></script>
 </body>
 </html>

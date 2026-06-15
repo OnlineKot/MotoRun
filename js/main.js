@@ -12,10 +12,11 @@
   const screenMenu = $("screen-menu");
   const screenShop = $("screen-shop");
   const screenOver = $("screen-over");
+  const screenConnect = $("screen-connect");
   const hud = $("hud");
 
   function showScreen(el) {
-    [screenMenu, screenShop, screenOver].forEach(function (s) { s.classList.add("hidden"); });
+    [screenMenu, screenShop, screenOver, screenConnect].forEach(function (s) { s.classList.add("hidden"); });
     if (el) el.classList.remove("hidden");
   }
 
@@ -27,9 +28,10 @@
     $("hud-teo").textContent = "🪙 " + d.teopoints;
   }
 
-  /* --- pasek profilu (TEO + login) --- */
-  function refreshProfileBar(p) {
-    $("teo-balance").textContent = p.teopoints | 0;
+  /* --- pasek profilu (TEO + login). Saldo bierzemy z Economy (TF CARD gdy połączony). --- */
+  function refreshProfileBar() {
+    const p = window.Economy.profile;
+    $("teo-balance").textContent = window.Economy.teopoints;
     $("best-score").textContent = p.highScore | 0;
     $("streak").textContent = p.streakDays | 0;
   }
@@ -73,13 +75,14 @@
           (selected ? "✓ Wybrany" : owned ? "Wybierz" : "Kup") +
         '</button>';
       const btn = card.querySelector(".skin-btn");
-      btn.onclick = function () {
+      btn.onclick = async function () {
         if (selected) return;
         if (owned) {
           window.Economy.selectSkin(item.id);
         } else {
-          const r = window.Economy.buySkin(item.id);
-          if (!r.ok) { toast(r.reason); return; }
+          btn.disabled = true; btn.textContent = "…";
+          const r = await window.Economy.buySkin(item.id);
+          if (!r.ok) { toast(r.reason); renderShop(); return; }
           toast("Kupiono " + item.name + "! 🎉");
         }
         renderShop();
@@ -134,7 +137,69 @@
   $("btn-menu").onclick = function () { window.Game.setMenu(); };
   $("btn-over-shop").onclick = function () { renderShop(); showScreen(screenShop); };
 
+  /* ====================== ŁĄCZENIE KONTA TF CARD ====================== */
+  function updateConnectUI() {
+    const tf = window.TFCard;
+    const b = $("btn-connect");
+    if (tf && tf.connected) b.innerHTML = "💳 TF CARD: " + (tf.name || "konto") + " ✓";
+    else b.textContent = "💳 Połącz konto TF CARD";
+    refreshProfileBar();
+    if (!screenConnect.classList.contains("hidden")) renderConnectStatus();
+    const over = $("btn-over-connect");
+    if (over) over.classList.toggle("hidden", !!(tf && tf.connected));
+  }
+
+  function renderConnectStatus() {
+    const tf = window.TFCard;
+    const st = $("connect-status");
+    const pin = $("connect-pin"), doBtn = $("btn-connect-do"), offBtn = $("btn-disconnect");
+    if (tf && tf.connected) {
+      st.innerHTML = "✅ Połączono jako <b>" + (tf.name || "Gracz") + "</b><br>Saldo: 🪙 " + tf.balance + " TEO";
+      pin.classList.add("hidden"); doBtn.classList.add("hidden"); offBtn.classList.remove("hidden");
+    } else if (!tf || !tf.ready) {
+      st.textContent = "Łączenie z TF CARD…";
+      pin.classList.remove("hidden"); doBtn.classList.remove("hidden"); offBtn.classList.add("hidden");
+    } else {
+      st.textContent = "Nie połączono. Wpisz PIN konta TF CARD.";
+      pin.classList.remove("hidden"); doBtn.classList.remove("hidden"); offBtn.classList.add("hidden");
+    }
+  }
+
+  function openConnect() { renderConnectStatus(); showScreen(screenConnect); }
+
+  $("btn-connect").onclick = openConnect;
+  $("btn-connect-back").onclick = function () { showScreen(screenMenu); };
+  $("btn-over-connect").onclick = openConnect;
+  $("btn-disconnect").onclick = function () {
+    window.TFCard.disconnect(); renderConnectStatus(); toast("Odłączono konto TF CARD.");
+  };
+  $("btn-connect-do").onclick = async function () {
+    const pinEl = $("connect-pin");
+    const pin = (pinEl.value || "").trim();
+    if (!pin) { toast("Wpisz PIN."); return; }
+    if (!window.TFCard || !window.TFCard.ready) { toast("TF CARD jeszcze się łączy…"); return; }
+    const btn = $("btn-connect-do");
+    btn.disabled = true; btn.textContent = "…";
+    const r = await window.TFCard.connect(pin);
+    btn.disabled = false; btn.textContent = "Połącz";
+    if (!r.ok) { toast(r.reason || "Błąd połączenia."); return; }
+    pinEl.value = "";
+    toast("Połączono: " + r.name + " 🎉");
+    renderConnectStatus();
+  };
+
+  // zdarzenia z modułu TF CARD (na żywo)
+  window.addEventListener("tfcard-ready",      updateConnectUI);
+  window.addEventListener("tfcard-connect",    updateConnectUI);
+  window.addEventListener("tfcard-disconnect", updateConnectUI);
+  window.addEventListener("tfcard-teo", function () {
+    refreshProfileBar();
+    if (!screenShop.classList.contains("hidden")) $("shop-teo").textContent = window.Economy.teopoints;
+    if (!screenConnect.classList.contains("hidden")) renderConnectStatus();
+  });
+
   // start na menu
+  updateConnectUI();
   showScreen(screenMenu);
   hud.classList.add("hidden");
 })();

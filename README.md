@@ -24,6 +24,35 @@ To statyczna strona — nie wymaga budowania.
 - W **TFcard** kupujesz skiny motocykla **płacąc wyłącznie TEOpointsami**.
 - Zakupy są w 100% wirtualne — `requireCardVerification: false` w `js/config.js`.
 
+## 🔗 Integracja z aplikacją bankową TF CARD (na żywo)
+
+MotoRun synchronizuje TEOpoints z prawdziwym kontem gracza w **TF CARD**
+(Firebase Firestore, projekt `tf-card`, dokument `tfcard/state`).
+
+**Jak to działa:**
+1. Na starcie moduł `js/teopoints.js` loguje się anonimowo do Firebase TF CARD.
+2. Gracz klika **„💳 Połącz konto TF CARD"** i wpisuje swój **PIN** → po PIN-ie
+   znajdujemy `uid` i zapamiętujemy go w `localStorage`.
+3. Po połączeniu **źródłem prawdy dla salda staje się TF CARD**
+   (`users.<uid>.teo`), a HUD pokazuje saldo na żywo (`onSnapshot`).
+4. Nagroda za przejazd → dopis `teo_in` w historii TF CARD.
+5. Zakup skiny / koszt → najpierw sprawdzamy saldo na serwerze, potem `teo_out`.
+6. Bez połączenia gra działa na saldzie lokalnym (offline).
+
+**Bezpieczeństwo danych TF CARD:**
+- Zapisujemy **wyłącznie** przez field-path `users.${uid}.teo` oraz
+  `users.${uid}.transactions.${txid}` — **nigdy** nie nadpisujemy całego
+  dokumentu, więc konta innych użytkowników są nienaruszone.
+- Nie ruszamy pól `balance`, `pin`, `name`, `subs` itd.
+- `teo` nigdy nie spada poniżej 0.
+- **Anti-cheat:** maksymalna nagroda na jeden przejazd =
+  `ECONOMY.maxRewardPerRun` (domyślnie 5000) w `js/config.js`.
+- Po stronie TF CARD nic nie trzeba zmieniać — punkty pojawią się
+  w zakładce TEOpoints (saldo + historia).
+
+> Konfiguracja Firebase TF CARD jest wpisana w `js/teopoints.js`. Klucze
+> Firebase Web są publiczne z założenia — dostępu pilnują reguły Firestore.
+
 ## ⚙️ Konfiguracja (wszystko w `js/config.js`)
 
 | Co | Gdzie wkleić | Bez tego |

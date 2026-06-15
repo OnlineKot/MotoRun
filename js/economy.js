@@ -36,6 +36,17 @@ window.Economy = (function () {
   const listeners = [];
   function emit() { listeners.forEach(function (fn) { fn(profile); }); }
 
+  /* Czy gracz ma połączone konto TF CARD (źródło prawdy dla TEOpoints). */
+  function tf() { return (window.TFCard && window.TFCard.connected) ? window.TFCard : null; }
+
+  /* Dopisanie TEO: jeśli połączony TF CARD -> do TF CARD; inaczej lokalnie. */
+  function creditTeo(amount, title) {
+    if (amount <= 0) return;
+    const t = tf();
+    if (t) { t.earn(amount, title); }
+    else { profile.teopoints += amount; }
+  }
+
   function loadLocal() {
     try {
       const raw = localStorage.getItem(LS_KEY);
@@ -71,7 +82,7 @@ window.Economy = (function () {
     else profile.streakDays = 1;
     profile.lastPlayDay = today;
     const reward = profile.streakDays * 50;
-    profile.teopoints += reward;
+    creditTeo(reward, "MotoRun: seria " + profile.streakDays + " dni");
     persist();
     window.Analytics.track("daily_streak", { day: profile.streakDays, reward: reward });
     return reward;
@@ -91,27 +102,42 @@ window.Economy = (function () {
     },
     onChange: function (fn) { listeners.push(fn); fn(profile); },
     get profile() { return profile; },
-    get teopoints() { return Math.floor(profile.teopoints); },
+    /* Saldo: z TF CARD (na żywo) gdy połączony, inaczej lokalne. */
+    get teopoints() {
+      const t = tf();
+      return t ? Math.floor(t.balance) : Math.floor(profile.teopoints);
+    },
+    get isTFCardConnected() { return !!tf(); },
 
-    addTeopoints: function (amount) {
-      profile.teopoints += amount;
+    addTeopoints: function (amount, title) {
+      creditTeo(amount, title || "MotoRun");
       persist();
     },
 
-    /* Zakup skinu w TFcard – bez karty, tylko TEOpoints. */
-    buySkin: function (skinId) {
+    /* Zakup skinu w TFcard – bez karty, tylko TEOpoints.
+     * Async: gdy połączony TF CARD, koszt jest pobierany z konta na serwerze. */
+    buySkin: async function (skinId) {
       const item = CATALOG.find(function (s) { return s.id === skinId; });
       if (!item) return { ok: false, reason: "Nie ma takiego skinu." };
       if (profile.ownedSkins.indexOf(skinId) !== -1) return { ok: false, reason: "Już posiadasz." };
-      if (profile.teopoints < item.price) return { ok: false, reason: "Za mało TEOpoints." };
 
-      profile.teopoints -= item.price;
+      const t = tf();
+      if (item.price > 0) {
+        if (t) {
+          const res = await t.spend(item.price, "MotoRun: skórka " + item.name);
+          if (!res.ok) return { ok: false, reason: res.reason };
+        } else {
+          if (profile.teopoints < item.price) return { ok: false, reason: "Za mało TEOpoints." };
+          profile.teopoints -= item.price;
+        }
+      }
+
       profile.ownedSkins.push(skinId);
       profile.selectedSkin = skinId;
       persist();
       window.Analytics.track("purchase", {
         item_id: skinId, item_name: item.name, price_teopoints: item.price,
-        currency: "TEO", card_verified: false
+        currency: "TEO", card_verified: false, tfcard: !!t
       });
       return { ok: true, item: item };
     },
@@ -128,22 +154,25 @@ window.Economy = (function () {
       return CATALOG.find(function (s) { return s.id === profile.selectedSkin; }) || CATALOG[0];
     },
 
-    /* Wywoływane na koniec przejazdu – zapisuje wynik + przelicza TEO. */
+    /* Wywoływane na koniec przejazdu – zapisuje wynik + przelicza TEO.
+     * Nagroda jest ograniczona anti-cheatowym limitem maxRewardPerRun. */
     finishRun: function (stats) {
       const earnedDist  = Math.floor(stats.distance * CFG.ECONOMY.teopointsPerMeter);
       const earnedFlip  = stats.flips * CFG.ECONOMY.teopointsPerFlip;
       const earnedPerf  = stats.perfectLandings * CFG.ECONOMY.perfectLandingBonus;
-      const earned      = earnedDist + earnedFlip + earnedPerf + stats.coins;
+      const cap   = CFG.ECONOMY.maxRewardPerRun || 5000;
+      const earned = Math.min(earnedDist + earnedFlip + earnedPerf + stats.coins, cap);
 
-      profile.teopoints  += earned;
       profile.totalRuns  += 1;
       profile.highScore   = Math.max(profile.highScore, stats.score);
       profile.bestDistance = Math.max(profile.bestDistance, Math.floor(stats.distance));
+      creditTeo(earned, "MotoRun: dystans " + Math.floor(stats.distance) + " m");
       persist();
 
       window.Analytics.track("game_over", {
         score: stats.score, distance: Math.floor(stats.distance),
-        flips: stats.flips, teopoints_earned: earned, total_runs: profile.totalRuns
+        flips: stats.flips, teopoints_earned: earned, total_runs: profile.totalRuns,
+        tfcard: !!tf()
       });
       return { earned: earned, breakdown: { earnedDist: earnedDist, earnedFlip: earnedFlip, earnedPerf: earnedPerf, coins: stats.coins } };
     },
